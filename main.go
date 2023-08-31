@@ -1,18 +1,43 @@
 package main
 
 import (
-	routes "mmm/reminder/routes"
+	"log"
+	"mmm/reminder/controllers"
+	"mmm/reminder/initializers"
+	"mmm/reminder/routes"
 
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	server              *gin.Engine
+	TaskController      controllers.TaskController
+	TaskRouteController routes.TaskRouteController
+)
+
+func init() {
+	config, err := initializers.LoadConfig(".")
+	if err != nil {
+		log.Fatal("Could not load environment variables", err)
+	}
+
+	initializers.ConnectDB(&config)
+
+	TaskController = controllers.NewTaskController(initializers.DB)
+	TaskRouteController = routes.NewRouteTaskController(TaskController)
+
+	server = gin.Default()
+}
+
 func main() {
-	r := gin.Default()
+	config, err := initializers.LoadConfig(".")
+	if err != nil {
+		log.Fatal("Could not load environment variables", err)
+	}
 
-	r.GET("/tasks", routes.ReadTask)
-	r.POST("/tasks", routes.CreateTask)
-	r.PUT("/tasks/:id", routes.UpdateTask)
-	r.DELETE("/tasks/:id", routes.DeleteTask)
+	router := server.Group("/api")
 
-	r.Run()
+	TaskRouteController.TaskRoute(router)
+
+	log.Fatal(server.Run(":" + config.ServerPort))
 }
